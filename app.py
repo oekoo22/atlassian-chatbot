@@ -34,8 +34,18 @@ response = requests.get(url, headers=headers, auth=auth)
 
 # Check if request was successful
 if response.status_code == 200:
-    print("Request was successful")
-    print(response.json())
+    ticket_data = response.json()
+    description = ticket_data['fields'].get('description', None)
+    
+    if description:
+        # Extract text from structured output
+        text_content = ""
+        for paragraph in description.get('content', []):
+            for element in paragraph.get('content', []):
+                if element['type'] == 'text':
+                    text_content += element['text'] + " "
+        print("Ticket-Beschreibung:", text_content.strip())
+    else:
+        print("Keine Beschreibung verfügbar")
 else:
-    print("Request failed")
-    print(response.text)
+    print("Fehler:", response.status_code, response.text)
