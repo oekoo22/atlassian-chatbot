@@ -2,6 +2,7 @@
 from dotenv import load_dotenv
 import os
 import requests
+import openai
 
 load_dotenv()
 
@@ -9,6 +10,12 @@ load_dotenv()
 atlassian_key = os.getenv("ATLASSIAN_API")
 jira_user = os.getenv("JIRA_USER_EMAIL")
 jira_url = os.getenv("JIRA_URL")
+
+# OpenAI Key
+openai_key = os.getenv("OPENAI_API")
+
+# Set OpenAI API Key
+openai.api_key = openai_key
 
 # Check if env file loaded correctly
 # print("API Key loaded:", atlassian_key is not None)
@@ -48,3 +55,17 @@ if response.status_code == 200:
         print("Keine Beschreibung verfügbar")
 else:
     print("Fehler:", response.status_code, response.text)
+
+# OpenAI Test Request
+response = openai.chat.completions.create(
+  model="gpt-3.5-turbo",
+  messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {
+            "role": "user",
+            "content": "Explain like I'm five what SCRUM is"
+        }
+    ]
+)
+
+print(response.choices[0].message)
