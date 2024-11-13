@@ -1,5 +1,4 @@
 # pip3 install requests python-dotenv
-
 from dotenv import load_dotenv
 import os
 import requests
@@ -12,11 +11,11 @@ jira_user = os.getenv("JIRA_USER_EMAIL")
 jira_url = os.getenv("JIRA_URL")
 
 # Check if env file loaded correctly
-print("API Key loaded:", atlassian_key is not None)
-print("Jira User loaded:", jira_user is not None)
-print("Jira Domain loaded:", jira_url is not None)
+# print("API Key loaded:", atlassian_key is not None)
+# print("Jira User loaded:", jira_user is not None)
+# print("Jira Domain loaded:", jira_url is not None)
 
-# Ticket ID
+# Test Ticket ID
 ticket_id = "SCRUM-2"
 
 # URL for API-Request
