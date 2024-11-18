@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import os
 import requests
 import openai
+import json
 
 load_dotenv()
 
@@ -34,7 +35,7 @@ auth = (jira_user, atlassian_key)
 response = requests.get(url, headers=headers, auth=auth)
 
 # Function to get ticket description
-def get_ticket_description(ticket_id):
+def get_ticket_description():
     # Check if request was successful
     if response.status_code == 200:
         ticket_data = response.json()
@@ -58,15 +59,14 @@ tools = [
         "type": "function",
         "function": {
             "name": "get_ticket_description",
-            "description": "Retrieves the description of a JIRA ticket.",
-            "strict": True,
+            "description": "Gives the description of a JIRA ticket.",
             "parameters": {
-                "type": "string",
+                "type": "object",
                 "properties": {
                     "ticket_id": {
                         "type": "string",
                         "description": "The user's ticket ID.",
-                    },
+                    }
                 },
                 "required": ["ticket_id"],
                 "additionalProperties": False
@@ -74,6 +74,7 @@ tools = [
         }
     }
 ]
+
 # OpenAI Test Request
 response = openai.chat.completions.create(
   model="gpt-4o",
@@ -83,10 +84,13 @@ response = openai.chat.completions.create(
             "content": "You are a helpful assistant. Use the supplied tools to assist the user."},
         {
             "role": "user",
-            "content": "Please provide me the description of the ticket SCRUM-2."
+            "content": "Please provide me the description of the ticket with the id SCRUM-2."
         }
     ],
-    tools=tools
+    tools=tools,
 )
 
 print(response.choices[0].message)
+
+tool_call = response.choices[0].message.content
+print(tool_call)
