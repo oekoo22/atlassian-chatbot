@@ -88,4 +88,6 @@ response = openai.chat.completions.create(
     tools=tools
 )
 
-print(response.choices[0].message)
+#print(response.choices[0].message)
+
+get_ticket_description("SCRUM-2")
