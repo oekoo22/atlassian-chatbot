@@ -33,37 +33,35 @@ auth = (jira_user, atlassian_key)
 # API-Request
 response = requests.get(url, headers=headers, auth=auth)
 
-# Check if request was successful
-if response.status_code == 200:
-    ticket_data = response.json()
-    description = ticket_data['fields'].get('description', None)
-        
-    if description:
-        # Extract text from structured output
-        text_content = ""
-        for paragraph in description.get('content', []):
-            for element in paragraph.get('content', []):
-                if element['type'] == 'text':
-                    text_content += element['text'] + " "
-        print("Ticket-Beschreibung:", text_content.strip())
-    else:
-        print("Keine Beschreibung verfügbar")
-else:
-    print("Fehler:", response.status_code, response.text)
-
-# Function for Chatbot to decide wheather to use Atlassian API or not
+# Function to get ticket description
 def get_ticket_description(ticket_id):
-    description = text_content.strip()
-    return description
+    # Check if request was successful
+    if response.status_code == 200:
+        ticket_data = response.json()
+        description = ticket_data['fields'].get('description', None)
+            
+        if description:
+            # Extract text from structured output
+            text_content = ""
+            for paragraph in description.get('content', []):
+                for element in paragraph.get('content', []):
+                    if element['type'] == 'text':
+                        text_content += element['text'] + " "
+            print("Ticket-Beschreibung:", text_content.strip())
+        else:
+            print("Keine Beschreibung verfügbar")
+    else:
+        print("Fehler:", response.status_code, response.text)
 
 tools = [
     {
         "type": "function",
         "function": {
             "name": "get_ticket_description",
-            "description": "Call this function when the you are asked to provide the description of a ticket.",
+            "description": "Retrieves the description of a JIRA ticket.",
+            "strict": True,
             "parameters": {
-                "type": "object",
+                "type": "string",
                 "properties": {
                     "ticket_id": {
                         "type": "string",
