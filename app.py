@@ -16,12 +16,7 @@ openai_key = os.getenv("OPENAI_API")
 
 # Set OpenAI API Key
 openai.api_key = openai_key
-
-# Check if env file loaded correctly
-# print("API Key loaded:", atlassian_key is not None)
-# print("Jira User loaded:", jira_user is not None)
-# print("Jira Domain loaded:", jira_url is not None)
-
+    
 # Test Ticket ID
 ticket_id = "SCRUM-2"
 
@@ -38,24 +33,36 @@ auth = (jira_user, atlassian_key)
 # API-Request
 response = requests.get(url, headers=headers, auth=auth)
 
-# Check if request was successful
-if response.status_code == 200:
-    ticket_data = response.json()
-    description = ticket_data['fields'].get('description', None)
-    
-    if description:
-        # Extract text from structured output
-        text_content = ""
-        for paragraph in description.get('content', []):
-            for element in paragraph.get('content', []):
-                if element['type'] == 'text':
-                    text_content += element['text'] + " "
-        print("Ticket-Beschreibung:", text_content.strip())
+# Function for Chatbot to decide wheather to use Atlassian API or not
+def get_ticket_description():
+    # Check if request was successful
+    if response.status_code == 200:
+        ticket_data = response.json()
+        description = ticket_data['fields'].get('description', None)
+        
+        if description:
+            # Extract text from structured output
+            text_content = ""
+            for paragraph in description.get('content', []):
+                for element in paragraph.get('content', []):
+                    if element['type'] == 'text':
+                        text_content += element['text'] + " "
+            print("Ticket-Beschreibung:", text_content.strip())
+        else:
+            print("Keine Beschreibung verfügbar")
     else:
-        print("Keine Beschreibung verfügbar")
-else:
-    print("Fehler:", response.status_code, response.text)
+        print("Fehler:", response.status_code, response.text)
 
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_ticket_description",
+            "description": "Get the description of a Jira ticket when you are explicitly asked for information which leads to the necessaty of looking into a Jira Ticket. For example when the user prompts a question to a project or directly asks for a ticket.",
+            "additionalProperties": False
+        }
+    }
+]
 # OpenAI Test Request
 response = openai.chat.completions.create(
   model="gpt-3.5-turbo",
@@ -63,9 +70,10 @@ response = openai.chat.completions.create(
         {"role": "system", "content": "You are a helpful assistant."},
         {
             "role": "user",
-            "content": "Explain like I'm five what SCRUM is"
+            "content": "I need help with my project. Can you please give me the description of the current ticket SCRUM-2?"
         }
-    ]
+    ],
+    tools=tools
 )
 
 print(response.choices[0].message)
