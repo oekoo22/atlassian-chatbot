@@ -35,7 +35,13 @@ auth = (jira_user, atlassian_key)
 response = requests.get(url, headers=headers, auth=auth)
 
 # Function to get ticket description
-def get_ticket_description():
+def get_ticket_description(ticket_id):
+    # URL for API-Request
+    url = f"{jira_url}/rest/api/3/issue/{ticket_id}"
+    
+    # API-Request
+    response = requests.get(url, headers=headers, auth=auth)
+    
     # Check if request was successful
     if response.status_code == 200:
         ticket_data = response.json()
@@ -48,11 +54,11 @@ def get_ticket_description():
                 for element in paragraph.get('content', []):
                     if element['type'] == 'text':
                         text_content += element['text'] + " "
-            print("Ticket-Beschreibung:", text_content.strip())
+            return text_content.strip()
         else:
-            print("Keine Beschreibung verfügbar")
+            return "Keine Beschreibung verfügbar"
     else:
-        print("Fehler:", response.status_code, response.text)
+        return f"Fehler: {response.status_code} {response.text}"
 
 tools = [
     {
