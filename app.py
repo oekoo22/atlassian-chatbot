@@ -17,24 +17,24 @@ openai_key = os.getenv("OPENAI_API")
 # Set OpenAI API Key
 openai.api_key = openai_key
     
-# Test Ticket ID
-ticket_id = "SCRUM-2"
-
-# URL for API-Request
-url = f"{jira_url}/rest/api/3/issue/{ticket_id}"
-
-# Header for API-Request
-headers = {
-    "Accept": "application/json"
-}
-
-auth = (jira_user, atlassian_key)
-
-# API-Request
-response = requests.get(url, headers=headers, auth=auth)
-
 # Function for Chatbot to decide wheather to use Atlassian API or not
-def get_ticket_description():
+def get_ticket_description(ticket_id):
+    # Test Ticket ID
+    ticket_id = "SCRUM-2"
+
+    # URL for API-Request
+    url = f"{jira_url}/rest/api/3/issue/{ticket_id}"
+
+    # Header for API-Request
+    headers = {
+        "Accept": "application/json"
+    }
+
+    auth = (jira_user, atlassian_key)
+
+    # API-Request
+    response = requests.get(url, headers=headers, auth=auth)
+
     # Check if request was successful
     if response.status_code == 200:
         ticket_data = response.json()
@@ -58,16 +58,28 @@ tools = [
         "type": "function",
         "function": {
             "name": "get_ticket_description",
-            "description": "Get the description of a Jira ticket when you are explicitly asked for information which leads to the necessaty of looking into a Jira Ticket. For example when the user prompts a question to a project or directly asks for a ticket.",
-            "additionalProperties": False
+            "description": "Call this whenever an user needs the information of a Jira ticket. Get the description of a Jira ticket when you are explicitly asked for information which leads to the necessaty of looking into a Jira Ticket. For example when the user prompts a question to a project or directly asks for a ticket.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ticket_id": {
+                        "type": "string",
+                        "description": "The user's ticket ID.",
+                    },
+                },
+                "required": ["ticket_id"],
+                "additionalProperties": False
+            }
         }
     }
 ]
 # OpenAI Test Request
 response = openai.chat.completions.create(
-  model="gpt-3.5-turbo",
+  model="gpt-4o",
   messages=[
-        {"role": "system", "content": "You are a helpful assistant."},
+        {
+            "role": "system", 
+            "content": "You are a helpful assistant. Use the supplied tools to assist the user."},
         {
             "role": "user",
             "content": "I need help with my project. Can you please give me the description of the current ticket SCRUM-2?"
