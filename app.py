@@ -104,7 +104,7 @@ arguments = json.loads(tool_call.function.arguments)
 ticket_id = arguments['ticket_id']
 #print(get_ticket_description(ticket_id))
 
-
+# Function Call Result Message
 response = {
     "choices": [
         {
