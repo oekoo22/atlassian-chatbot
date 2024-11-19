@@ -65,14 +65,14 @@ tools = [
         "type": "function",
         "function": {
             "name": "get_ticket_description",
-            "description": "Gives the description of a JIRA ticket.",
+            "description": "Use this function whenever the prompt asks you to give the user acces to a ticket with a ticket id.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "ticket_id": {
                         "type": "string",
                         "description": "The user's ticket ID.",
-                    }
+                    },
                 },
                 "required": ["ticket_id"],
                 "additionalProperties": False
@@ -83,8 +83,8 @@ tools = [
 
 # OpenAI Test Request
 response = openai.chat.completions.create(
-  model="gpt-4o",
-  messages=[
+    model="gpt-4o",
+    messages=[
         {
             "role": "system", 
             "content": "You are a helpful assistant. Use the supplied tools to assist the user."},
@@ -96,7 +96,57 @@ response = openai.chat.completions.create(
     tools=tools,
 )
 
-print(response.choices[0].message)
+#print(response.choices[0])
 
-tool_call = response.choices[0].message.content
-print(tool_call)
+tool_call = response.choices[0].message.tool_calls[0]
+arguments = json.loads(tool_call.function.arguments)
+
+ticket_id = arguments['ticket_id']
+#print(get_ticket_description(ticket_id))
+
+
+response = {
+    "choices": [
+        {
+            "message": {
+                "role": "assistant",
+                "tool_calls": [
+                    {
+                        "id": "call_fOjuDCYeZVdO8vXGYAH69Sxi",
+                        "type": "function",
+                        "function": {
+                            "arguments": "{'ticket_id': 'SCRUM-2'}",
+                            "name": "get_ticket_description"
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}
+
+function_call_result_message = {
+    "role": "tool",
+    "content": json.dumps({
+        "ticket_id": ticket_id,
+        "ticket_description": get_ticket_description(ticket_id)
+    }),
+    "tool_call_id": response['choices'][0]['message']['tool_calls'][0]['id']
+}
+
+completion_payload = {
+    "model": "gpt-4o",
+    "messages": [
+        {"role": "system", "content": "You are a helpful assistant. Use the supplied tools to assist the user."},
+        {"role": "user", "content": "Hi, can you tell me the ticket description for the ticket SCRUM-2?"},
+        response['choices'][0]['message'],
+        function_call_result_message
+    ]
+}
+
+response = openai.chat.completions.create(
+    model=completion_payload["model"],
+    messages=completion_payload["messages"]
+)
+
+print(response)
