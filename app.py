@@ -17,9 +17,9 @@ openai_key = os.getenv("OPENAI_API")
 
 # Set OpenAI API Key
 openai.api_key = openai_key
-    
-# Test Ticket ID
-#ticket_id = "SCRUM-2"
+
+# Get User Input
+user_input = input("Please enter your prompt: ")
 
 # Function to get ticket description
 def get_ticket_description(ticket_id):
@@ -84,19 +84,16 @@ response = openai.chat.completions.create(
             "content": "You are a helpful assistant. Use the supplied tools to assist the user."},
         {
             "role": "user",
-            "content": "Please provide me the description of the ticket with the id SCRUM-3."
+            "content": f"{user_input}"
         }
     ],
     tools=tools,
 )
 
-#print(response.choices[0])
-
 tool_call = response.choices[0].message.tool_calls[0]
 arguments = json.loads(tool_call.function.arguments)
 
 ticket_id = arguments['ticket_id']
-#print(get_ticket_description(ticket_id))
 
 # Function Call Result Message
 response = {
@@ -128,11 +125,12 @@ function_call_result_message = {
     "tool_call_id": response['choices'][0]['message']['tool_calls'][0]['id']
 }
 
+# Combine function call result with a prompt
 completion_payload = {
     "model": "gpt-4o",
     "messages": [
         {"role": "system", "content": "You are a helpful assistant. Use the supplied tools to assist the user."},
-        {"role": "user", "content": "Hi, can you tell me the ticket description for the ticket SCRUM-3?"},
+        {"role": "user", "content": f"{user_input}"},
         response['choices'][0]['message'],
         function_call_result_message
     ]
