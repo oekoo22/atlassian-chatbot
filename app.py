@@ -59,6 +59,7 @@ tools = [
         "type": "function",
         "function": {
             "name": "get_ticket_description",
+            "strict": True,
             "description": "Use this function whenever the prompt asks you to give the user acces to a ticket with a ticket id.",
             "parameters": {
                 "type": "object",
@@ -87,58 +88,65 @@ response = openai.chat.completions.create(
             "content": f"{user_input}"
         }
     ],
-    tools=tools,
+    tools=tools
 )
 
-tool_call = response.choices[0].message.tool_calls[0]
-arguments = json.loads(tool_call.function.arguments)
+if response.choices[0].finish_reason != 'stop':
 
-ticket_id = arguments['ticket_id']
+    tool_call = response.choices[0].message.tool_calls[0]
+    arguments = json.loads(tool_call.function.arguments)
 
-# Function Call Result Message
-response = {
-    "choices": [
-        {
-            "message": {
-                "role": "assistant",
-                "tool_calls": [
-                    {
-                        "id": "call_fOjuDCYeZVdO8vXGYAH69Sxi",
-                        "type": "function",
-                        "function": {
-                            "arguments": "{'ticket_id': 'ticket_id'}",
-                            "name": "get_ticket_description"
+    ticket_id = arguments['ticket_id']
+
+    # Function Call Result Message
+    response = {
+        "choices": [
+            {
+                "message": {
+                    "role": "assistant",
+                    "tool_calls": [
+                        {
+                            "id": "call_fOjuDCYeZVdO8vXGYAH69Sxi",
+                            "type": "function",
+                            "function": {
+                                "arguments": "{'ticket_id': 'ticket_id'}",
+                                "name": "get_ticket_description"
+                            }
                         }
-                    }
-                ]
+                    ]
+                }
             }
-        }
-    ]
-}
+        ]
+    }
 
-function_call_result_message = {
-    "role": "tool",
-    "content": json.dumps({
-        "ticket_id": ticket_id,
-        "ticket_description": get_ticket_description(ticket_id)
-    }),
-    "tool_call_id": response['choices'][0]['message']['tool_calls'][0]['id']
-}
+    function_call_result_message = {
+        "role": "tool",
+        "content": json.dumps({
+            "ticket_id": ticket_id,
+            "ticket_description": get_ticket_description(ticket_id)
+        }),
+        "tool_call_id": response['choices'][0]['message']['tool_calls'][0]['id']
+    }
 
-# Combine function call result with a prompt
-completion_payload = {
-    "model": "gpt-4o",
-    "messages": [
-        {"role": "system", "content": "You are a helpful assistant. Use the supplied tools to assist the user."},
-        {"role": "user", "content": f"{user_input}"},
-        response['choices'][0]['message'],
-        function_call_result_message
-    ]
-}
+    # Combine function call result with a prompt
+    completion_payload = {
+        "model": "gpt-4o",
+        "messages": [
+            {"role": "system", "content": "You are a helpful assistant. Use the supplied tools to assist the user."},
+            {"role": "user", "content": f"{user_input}"},
+            response['choices'][0]['message'],
+            function_call_result_message
+        ]
+    }
 
-response = openai.chat.completions.create(
-    model=completion_payload["model"],
-    messages=completion_payload["messages"]
-)
+    response = openai.chat.completions.create(
+        model=completion_payload["model"],
+        messages=completion_payload["messages"]
+    )
 
-print(response.choices[0].message.content)
+    final_response = response
+    
+else:
+    final_response = response
+
+print(final_response.choices[0].message.content)
