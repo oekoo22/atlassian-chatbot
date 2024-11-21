@@ -141,4 +141,4 @@ response = openai.chat.completions.create(
     messages=completion_payload["messages"]
 )
 
-print(response)
+print(response.choices[0].message.content)
