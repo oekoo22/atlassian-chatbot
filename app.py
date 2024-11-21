@@ -19,23 +19,17 @@ openai_key = os.getenv("OPENAI_API")
 openai.api_key = openai_key
     
 # Test Ticket ID
-ticket_id = "SCRUM-2"
-
-# URL for API-Request
-url = f"{jira_url}/rest/api/3/issue/{ticket_id}"
-
-# Header for API-Request
-headers = {
-    "Accept": "application/json"
-}
-
-auth = (jira_user, atlassian_key)
-
-# API-Request
-response = requests.get(url, headers=headers, auth=auth)
+#ticket_id = "SCRUM-2"
 
 # Function to get ticket description
 def get_ticket_description(ticket_id):
+    # Header for API-Request
+    headers = {
+        "Accept": "application/json"
+    }
+
+    auth = (jira_user, atlassian_key)
+
     # URL for API-Request
     url = f"{jira_url}/rest/api/3/issue/{ticket_id}"
     
@@ -90,7 +84,7 @@ response = openai.chat.completions.create(
             "content": "You are a helpful assistant. Use the supplied tools to assist the user."},
         {
             "role": "user",
-            "content": "Please provide me the description of the ticket with the id SCRUM-2."
+            "content": "Please provide me the description of the ticket with the id SCRUM-3."
         }
     ],
     tools=tools,
@@ -115,7 +109,7 @@ response = {
                         "id": "call_fOjuDCYeZVdO8vXGYAH69Sxi",
                         "type": "function",
                         "function": {
-                            "arguments": "{'ticket_id': 'SCRUM-2'}",
+                            "arguments": "{'ticket_id': 'ticket_id'}",
                             "name": "get_ticket_description"
                         }
                     }
@@ -138,7 +132,7 @@ completion_payload = {
     "model": "gpt-4o",
     "messages": [
         {"role": "system", "content": "You are a helpful assistant. Use the supplied tools to assist the user."},
-        {"role": "user", "content": "Hi, can you tell me the ticket description for the ticket SCRUM-2?"},
+        {"role": "user", "content": "Hi, can you tell me the ticket description for the ticket SCRUM-3?"},
         response['choices'][0]['message'],
         function_call_result_message
     ]
