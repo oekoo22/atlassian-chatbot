@@ -194,6 +194,8 @@ def init_session_state():
         st.session_state.messages = []
     if 'chatbot' not in st.session_state:
         st.session_state.chatbot = JiraChatbot()
+    if 'user_input' not in st.session_state:
+        st.session_state.user_input = ""
 
 def display_message(role, content):
     """Display a chat message with appropriate styling."""
@@ -225,8 +227,9 @@ def main():
     with st.container():
         user_input = st.text_input(
             "Ihre Nachricht:",
-            key="user_input",
-            placeholder="Fragen Sie z.B. nach einem bestimmten Ticket oder suchen Sie nach Stichworten..."
+            key="user_input_field",
+            placeholder="Fragen Sie z.B. nach einem bestimmten Ticket oder suchen Sie nach Stichworten...",
+            value=st.session_state.user_input
         )
         
         col1, col2 = st.columns([6, 1])
@@ -236,9 +239,10 @@ def main():
     if clear_button:
         st.session_state.messages = []
         st.session_state.chatbot = JiraChatbot()
+        st.session_state.user_input = ""
         st.rerun()
 
-    if user_input:
+    if user_input and user_input != st.session_state.user_input:
         # Add user message to chat history
         st.session_state.messages.append({"role": "user", "content": user_input})
         
@@ -248,8 +252,8 @@ def main():
         # Add assistant response to chat history
         st.session_state.messages.append({"role": "assistant", "content": response})
         
-        # Clear input
-        st.session_state.user_input = ""
+        # Update user_input in session state
+        st.session_state.user_input = user_input
         
         # Rerun to update the display
         st.rerun()
