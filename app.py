@@ -194,18 +194,13 @@ def init_session_state():
         st.session_state.messages = []
     if 'chatbot' not in st.session_state:
         st.session_state.chatbot = JiraChatbot()
-    if 'user_input' not in st.session_state:
-        st.session_state.user_input = ""
 
 def display_message(role, content):
-    """Display a chat message with appropriate styling."""
+    """Display a chat message with bubble-like styling."""
     if role == "user":
-        st.write(f'👤 **Sie** ({datetime.now().strftime("%H:%M")})')
-        st.write(content)
+        st.chat_message("user").write(content)
     else:
-        st.write(f'🤖 **JIRA Assistant** ({datetime.now().strftime("%H:%M")})')
-        st.write(content)
-    st.write("---")
+        st.chat_message("assistant").write(content)
 
 def main():
     st.set_page_config(
@@ -220,48 +215,23 @@ def main():
     # Initialize session state
     init_session_state()
 
-    # Chat container
-    chat_container = st.container()
+    # Display chat history
+    for message in st.session_state.messages:
+        display_message(message["role"], message["content"])
 
-    # Input container at the bottom
-    with st.container():
-        user_input = st.text_input(
-            "Ihre Nachricht:",
-            key="user_input_field",
-            placeholder="Fragen Sie z.B. nach einem bestimmten Ticket oder suchen Sie nach Stichworten...",
-            value=st.session_state.user_input
-        )
-        
-        col1, col2 = st.columns([6, 1])
-        with col2:
-            clear_button = st.button("Chat löschen")
-
-    if clear_button:
-        st.session_state.messages = []
-        st.session_state.chatbot = JiraChatbot()
-        st.session_state.user_input = ""
-        st.rerun()
-
-    if user_input and user_input != st.session_state.user_input:
+    # Chat input
+    if prompt := st.chat_input("Fragen Sie z.B. nach einem bestimmten Ticket oder suchen Sie nach Stichworten..."):
         # Add user message to chat history
-        st.session_state.messages.append({"role": "user", "content": user_input})
+        st.session_state.messages.append({"role": "user", "content": prompt})
         
         # Get chatbot response
-        response = st.session_state.chatbot.process_conversation(user_input)
+        response = st.session_state.chatbot.process_conversation(prompt)
         
         # Add assistant response to chat history
         st.session_state.messages.append({"role": "assistant", "content": response})
         
-        # Update user_input in session state
-        st.session_state.user_input = user_input
-        
         # Rerun to update the display
         st.rerun()
-
-    # Display chat history
-    with chat_container:
-        for message in st.session_state.messages:
-            display_message(message["role"], message["content"])
 
 if __name__ == "__main__":
     main()
