@@ -133,7 +133,7 @@ class JiraChatbot:
         
         try:
             response = openai.chat.completions.create(
-                model="gpt-4",
+                model="gpt-4o",
                 messages=self.conversation_messages,
                 tools=self.tools
             )
