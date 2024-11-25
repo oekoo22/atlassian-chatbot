@@ -21,11 +21,10 @@ class JiraChatbot:
         self.conversation_messages = [
             {
                 "role": "system",
-                "content": """Du bist ein hilfreicher Assistent, der Jira Tickets durchsucht und analysiert. 
-                Wenn der Benutzer nach einem spezifischen Ticket-ID fragt (z.B. SCRUM-3), nutze get_ticket_description.
-                Wenn der Benutzer nach Informationen sucht (z.B. 'Wo wird XYZ erwähnt?'), nutze search_tickets_by_keyword.
-                Fasse die gefundenen Informationen zusammen und antworte in verständlicher Form.
-                Füge für jedes erwähnte Ticket einen Link zum Ticket hinzu."""
+                "content": """You are a helpful assistant who searches and analyzes Jira tickets.
+                If the user asks for a specific ticket ID (e.g., SCRUM-3), use get_ticket_description.
+                If the user searches for information (e.g., "Where is XYZ mentioned?"), use search_tickets_by_keyword.
+                Summarize the found information and respond in a clear and understandable manner."""
             }
         ]
         
@@ -94,9 +93,9 @@ class JiraChatbot:
                             text_content += element['text'] + " "
                 return f"{text_content.strip()}\n\nTicket URL: {ticket_url}"
             else:
-                return f"Keine Beschreibung verfügbar\n\nTicket URL: {ticket_url}"
+                return f"No Description available\n\nTicket URL: {ticket_url}"
         else:
-            return f"Fehler: {response.status_code} {response.text}"
+            return f"Error: {response.status_code} {response.text}"
 
     def search_tickets_by_keyword(self, keyword):
         headers = {
@@ -186,7 +185,7 @@ class JiraChatbot:
             return assistant_message.content
             
         except Exception as e:
-            return f"Ein Fehler ist aufgetreten: {str(e)}"
+            return f"Error: {str(e)}"
 
 def init_session_state():
     """Initialize session state variables."""
@@ -210,7 +209,7 @@ def main():
     )
 
     st.title("🤖 JIRA Chat Assistant")
-    st.write("Stellen Sie Fragen zu Ihren JIRA-Tickets oder suchen Sie nach bestimmten Informationen.")
+    st.write("Ask questions about your JIRA tickets or search for specific information.")
 
     # Initialize session state
     init_session_state()
@@ -220,7 +219,7 @@ def main():
         display_message(message["role"], message["content"])
 
     # Chat input
-    if prompt := st.chat_input("Fragen Sie z.B. nach einem bestimmten Ticket oder suchen Sie nach Stichworten..."):
+    if prompt := st.chat_input("Ask questions about your JIRA tickets or search for specific information...."):
         # Add user message to chat history
         st.session_state.messages.append({"role": "user", "content": prompt})
         
