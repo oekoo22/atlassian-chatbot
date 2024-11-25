@@ -23,7 +23,8 @@ class JiraChatbot:
                 "content": """Du bist ein hilfreicher Assistent, der Jira Tickets durchsucht und analysiert. 
                 Wenn der Benutzer nach einem spezifischen Ticket-ID fragt (z.B. SCRUM-3), nutze get_ticket_description.
                 Wenn der Benutzer nach Informationen sucht (z.B. 'Wo wird XYZ erwähnt?'), nutze search_tickets_by_keyword.
-                Fasse die gefundenen Informationen zusammen und antworte in verständlicher Form."""
+                Fasse die gefundenen Informationen zusammen und antworte in verständlicher Form.
+                Füge für jedes erwähnte Ticket einen Link zum Ticket hinzu."""
             }
         ]
         
@@ -65,6 +66,10 @@ class JiraChatbot:
             }
         ]
 
+    def get_ticket_url(self, ticket_id):
+        """Generate the full URL for a Jira ticket."""
+        return f"{self.jira_url}/browse/{ticket_id}"
+
     def get_ticket_description(self, ticket_id):
         headers = {
             "Accept": "application/json"
@@ -78,6 +83,7 @@ class JiraChatbot:
         if response.status_code == 200:
             ticket_data = response.json()
             description = ticket_data['fields'].get('description', None)
+            ticket_url = self.get_ticket_url(ticket_id)
                 
             if description:
                 text_content = ""
@@ -85,9 +91,9 @@ class JiraChatbot:
                     for element in paragraph.get('content', []):
                         if element['type'] == 'text':
                             text_content += element['text'] + " "
-                return text_content.strip()
+                return f"{text_content.strip()}\n\nTicket URL: {ticket_url}"
             else:
-                return "Keine Beschreibung verfügbar"
+                return f"Keine Beschreibung verfügbar\n\nTicket URL: {ticket_url}"
         else:
             return f"Fehler: {response.status_code} {response.text}"
 
@@ -110,7 +116,8 @@ class JiraChatbot:
                     {
                         "ticket_id": issue['key'],
                         "summary": issue['fields'].get('summary', 'No Title available'),
-                        "description": self.get_ticket_description(issue['key'])
+                        "description": self.get_ticket_description(issue['key']),
+                        "url": self.get_ticket_url(issue['key'])
                     }
                     for issue in issues[:5]  # Limit to top 5 results for better handling
                 ]
