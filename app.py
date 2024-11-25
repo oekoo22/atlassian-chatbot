@@ -10,14 +10,14 @@ load_dotenv()
 
 class JiraChatbot:
     def __init__(self):
-        # Konfiguration
+        # Configurations
         self.atlassian_key = os.getenv("ATLASSIAN_API")
         self.jira_user = os.getenv("JIRA_USER_EMAIL")
         self.jira_url = os.getenv("JIRA_URL")
         self.openai_key = os.getenv("OPENAI_API")
         openai.api_key = self.openai_key
         
-        # Konversationsgedächtnis
+        # Conversation Messages
         self.conversation_messages = [
             {
                 "role": "system",
