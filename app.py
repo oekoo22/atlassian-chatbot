@@ -1,9 +1,10 @@
-# pip3 install requests python-dotenv
+import streamlit as st
 from dotenv import load_dotenv
 import os
 import requests
 import openai
 import json
+from datetime import datetime
 
 load_dotenv()
 
@@ -187,19 +188,76 @@ class JiraChatbot:
         except Exception as e:
             return f"Ein Fehler ist aufgetreten: {str(e)}"
 
+def init_session_state():
+    """Initialize session state variables."""
+    if 'messages' not in st.session_state:
+        st.session_state.messages = []
+    if 'chatbot' not in st.session_state:
+        st.session_state.chatbot = JiraChatbot()
+
+def display_message(role, content):
+    """Display a chat message with appropriate styling."""
+    if role == "user":
+        st.write(f'👤 **Sie** ({datetime.now().strftime("%H:%M")})')
+        st.write(content)
+    else:
+        st.write(f'🤖 **JIRA Assistant** ({datetime.now().strftime("%H:%M")})')
+        st.write(content)
+    st.write("---")
+
 def main():
-    print("Jira Chatbot gestartet. Geben Sie 'exit' ein, um das Programm zu beenden.")
-    chatbot = JiraChatbot()
-    
-    while True:
-        user_input = input("\nIhre Anfrage: ")
+    st.set_page_config(
+        page_title="JIRA Chat Assistant",
+        page_icon="🤖",
+        layout="wide"
+    )
+
+    st.title("🤖 JIRA Chat Assistant")
+    st.write("Stellen Sie Fragen zu Ihren JIRA-Tickets oder suchen Sie nach bestimmten Informationen.")
+
+    # Initialize session state
+    init_session_state()
+
+    # Chat container
+    chat_container = st.container()
+
+    # Input container at the bottom
+    with st.container():
+        user_input = st.text_input(
+            "Ihre Nachricht:",
+            key="user_input",
+            placeholder="Fragen Sie z.B. nach einem bestimmten Ticket oder suchen Sie nach Stichworten..."
+        )
         
-        if user_input.lower() == 'exit':
-            print("Auf Wiedersehen!")
-            break
-            
-        response = chatbot.process_conversation(user_input)
-        print("\nAssistent:", response)
+        col1, col2 = st.columns([6, 1])
+        with col2:
+            clear_button = st.button("Chat löschen")
+
+    if clear_button:
+        st.session_state.messages = []
+        st.session_state.chatbot = JiraChatbot()
+        st.rerun()
+
+    if user_input:
+        # Add user message to chat history
+        st.session_state.messages.append({"role": "user", "content": user_input})
+        
+        # Get chatbot response
+        response = st.session_state.chatbot.process_conversation(user_input)
+        
+        # Add assistant response to chat history
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        
+        # Clear input
+        st.session_state.user_input = ""
+        
+        # Rerun to update the display
+        st.rerun()
+
+    # Display chat history
+    with chat_container:
+        for message in st.session_state.messages:
+            display_message(message["role"], message["content"])
 
 if __name__ == "__main__":
     main()
