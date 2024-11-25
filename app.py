@@ -23,26 +23,20 @@ user_input = input("Please enter your prompt: ")
 
 # Function to get ticket description
 def get_ticket_description(ticket_id):
-    # Header for API-Request
     headers = {
         "Accept": "application/json"
     }
 
     auth = (jira_user, atlassian_key)
-
-    # URL for API-Request
     url = f"{jira_url}/rest/api/3/issue/{ticket_id}"
     
-    # API-Request
     response = requests.get(url, headers=headers, auth=auth)
     
-    # Check if request was successful
     if response.status_code == 200:
         ticket_data = response.json()
         description = ticket_data['fields'].get('description', None)
             
         if description:
-            # Extract text from structured output
             text_content = ""
             for paragraph in description.get('content', []):
                 for element in paragraph.get('content', []):
@@ -54,99 +48,140 @@ def get_ticket_description(ticket_id):
     else:
         return f"Fehler: {response.status_code} {response.text}"
 
+# Search for Jira Ticket
+def search_tickets_by_keyword(keyword):
+    headers = {
+        "Accept": "application/json"
+    }
+    auth = (jira_user, atlassian_key)
+
+    jql = f'text ~ "{keyword}" ORDER BY created DESC'
+    url = f"{jira_url}/rest/api/3/search?jql={jql}"
+    
+    response = requests.get(url, headers=headers, auth=auth)
+
+    if response.status_code == 200:
+        search_results = response.json()
+        issues = search_results.get('issues', [])
+        if issues:
+            return [
+                {
+                    "ticket_id": issue['key'],
+                    "summary": issue['fields'].get('summary', 'No Title available'),
+                    "description": get_ticket_description(issue['key'])  # Get full description for each ticket
+                }
+                for issue in issues[:5]  # Limit to top 5 results for better handling
+            ]
+        else:
+            return []
+    else:
+        raise Exception(f"Error: {response.status_code} {response.text}")
+
+# Define the available tools
 tools = [
     {
         "type": "function",
         "function": {
             "name": "get_ticket_description",
-            "strict": True,
-            "description": "Use this function whenever the prompt asks you to give the user acces to a ticket with a ticket id.",
+            "description": "Get the description of a specific Jira ticket using its ID",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "ticket_id": {
                         "type": "string",
-                        "description": "The user's ticket ID.",
-                    },
+                        "description": "The Jira ticket ID (e.g., SCRUM-3)",
+                    }
                 },
-                "required": ["ticket_id"],
-                "additionalProperties": False
+                "required": ["ticket_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_tickets_by_keyword",
+            "description": "Search for Jira tickets containing specific keywords",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "keyword": {
+                        "type": "string",
+                        "description": "The keyword to search for in tickets",
+                    }
+                },
+                "required": ["keyword"]
             }
         }
     }
 ]
 
-# OpenAI Test Request
-response = openai.chat.completions.create(
-    model="gpt-4o",
-    messages=[
-        {
-            "role": "system", 
-            "content": "You are a helpful assistant. Use the supplied tools to assist the user."},
-        {
-            "role": "user",
-            "content": f"{user_input}"
-        }
-    ],
-    tools=tools
-)
+def process_conversation(messages):
+    try:
+        response = openai.chat.completions.create(
+            model="gpt-4",
+            messages=messages,
+            tools=tools
+        )
+        
+        assistant_message = response.choices[0].message
+        
+        if response.choices[0].finish_reason == "tool_calls":
+            for tool_call in assistant_message.tool_calls:
+                function_name = tool_call.function.name
+                arguments = json.loads(tool_call.function.arguments)
+                
+                if function_name == "search_tickets_by_keyword":
+                    results = search_tickets_by_keyword(arguments["keyword"])
+                    
+                    # Add the function results to the messages
+                    messages.append({
+                        "role": "assistant",
+                        "content": None,
+                        "tool_calls": [tool_call]
+                    })
+                    messages.append({
+                        "role": "tool",
+                        "content": json.dumps(results),
+                        "tool_call_id": tool_call.id
+                    })
+                    
+                elif function_name == "get_ticket_description":
+                    description = get_ticket_description(arguments["ticket_id"])
+                    
+                    messages.append({
+                        "role": "assistant",
+                        "content": None,
+                        "tool_calls": [tool_call]
+                    })
+                    messages.append({
+                        "role": "tool",
+                        "content": description,
+                        "tool_call_id": tool_call.id
+                    })
+            
+            # Get the final response after function calls
+            return process_conversation(messages)
+        
+        return assistant_message.content
+        
+    except Exception as e:
+        return f"Ein Fehler ist aufgetreten: {str(e)}"
 
-if response.choices[0].finish_reason != 'stop':
-
-    tool_call = response.choices[0].message.tool_calls[0]
-    arguments = json.loads(tool_call.function.arguments)
-
-    ticket_id = arguments['ticket_id']
-
-    # Function Call Result Message
-    response = {
-        "choices": [
-            {
-                "message": {
-                    "role": "assistant",
-                    "tool_calls": [
-                        {
-                            "id": "call_fOjuDCYeZVdO8vXGYAH69Sxi",
-                            "type": "function",
-                            "function": {
-                                "arguments": "{'ticket_id': 'ticket_id'}",
-                                "name": "get_ticket_description"
-                            }
-                        }
-                    ]
-                }
-            }
-        ]
+# Initialize conversation
+conversation_messages = [
+    {
+        "role": "system",
+        "content": """Du bist ein hilfreicher Assistent, der Jira Tickets durchsucht und analysiert. 
+        Wenn der Benutzer nach einem spezifischen Ticket-ID fragt (z.B. SCRUM-3), nutze get_ticket_description.
+        Wenn der Benutzer nach Informationen sucht (z.B. 'Wo wird XYZ erwähnt?'), nutze search_tickets_by_keyword.
+        Fasse die gefundenen Informationen zusammen und antworte in verständlicher Form."""
+    },
+    {
+        "role": "user",
+        "content": user_input
     }
+]
 
-    function_call_result_message = {
-        "role": "tool",
-        "content": json.dumps({
-            "ticket_id": ticket_id,
-            "ticket_description": get_ticket_description(ticket_id)
-        }),
-        "tool_call_id": response['choices'][0]['message']['tool_calls'][0]['id']
-    }
-
-    # Combine function call result with a prompt
-    completion_payload = {
-        "model": "gpt-4o",
-        "messages": [
-            {"role": "system", "content": "You are a helpful assistant. Use the supplied tools to assist the user."},
-            {"role": "user", "content": f"{user_input}"},
-            response['choices'][0]['message'],
-            function_call_result_message
-        ]
-    }
-
-    response = openai.chat.completions.create(
-        model=completion_payload["model"],
-        messages=completion_payload["messages"]
-    )
-
-    final_response = response
-    
-else:
-    final_response = response
-
-print(final_response.choices[0].message.content)
+# Get and print response
+response = process_conversation(conversation_messages)
+print(response)
