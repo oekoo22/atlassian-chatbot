@@ -21,9 +21,10 @@ class JiraChatbot:
         self.conversation_messages = [
             {
                 "role": "system",
-                "content": """You are a helpful assistant who searches and analyzes Jira tickets.
+                "content": """You are a helpful assistant who searches and analyzes Jira tickets and Confluence pages.
                 If the user asks for a specific ticket ID (e.g., SCRUM-3), use get_ticket_description.
-                If the user searches for information (e.g., "Where is XYZ mentioned?"), use search_tickets_by_keyword.
+                If the user searches for information about Confluence (e.g., "Find pages about XYZ"), use search_confluence_pages.
+                If the user searches for ticket information (e.g., "Where is XYZ mentioned?"), use search_tickets_by_keyword.
                 Summarize the found information and respond in a clear and understandable manner."""
             }
         ]
@@ -63,12 +64,33 @@ class JiraChatbot:
                         "required": ["keyword"]
                     }
                 }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "search_confluence_pages",
+                    "description": "Search for Confluence pages containing specific keywords",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "keyword": {
+                                "type": "string",
+                                "description": "The keyword to search for in Confluence pages",
+                            }
+                        },
+                        "required": ["keyword"]
+                    }
+                }
             }
         ]
 
     def get_ticket_url(self, ticket_id):
         """Generate the full URL for a Jira ticket."""
         return f"{self.jira_url}/browse/{ticket_id}"
+
+    def get_confluence_page_url(self, page_id):
+        """Generate the full URL for a Confluence page."""
+        return f"{self.jira_url}/wiki/pages/viewpage.action?pageId={page_id}"
 
     def get_ticket_description(self, ticket_id):
         headers = {
@@ -126,6 +148,39 @@ class JiraChatbot:
         else:
             raise Exception(f"Error: {response.status_code} {response.text}")
 
+    def search_confluence_pages(self, keyword):
+        headers = {
+            "Accept": "application/json"
+        }
+        auth = (self.jira_user, self.atlassian_key)
+
+        # Use Confluence search API
+        url = f"{self.jira_url}/wiki/rest/api/search"
+        params = {
+            "cql": f"type=page and text ~ \"{keyword}\"",
+            "limit": 5  # Limit to top 5 results
+        }
+        
+        response = requests.get(url, headers=headers, auth=auth, params=params)
+
+        if response.status_code == 200:
+            search_results = response.json()
+            results = search_results.get('results', [])
+            if results:
+                return [
+                    {
+                        "page_id": result['content']['id'],
+                        "title": result['title'],
+                        "excerpt": result.get('excerpt', 'No excerpt available'),
+                        "url": self.get_confluence_page_url(result['content']['id'])
+                    }
+                    for result in results
+                ]
+            else:
+                return []
+        else:
+            raise Exception(f"Error: {response.status_code} {response.text}")
+
     def process_conversation(self, user_input):
         # Add User Input to the conversation
         self.conversation_messages.append({"role": "user", "content": user_input})
@@ -159,6 +214,21 @@ class JiraChatbot:
                             "tool_call_id": tool_call.id
                         })
                         
+                    elif function_name == "search_confluence_pages":
+                        results = self.search_confluence_pages(arguments["keyword"])
+                        
+                        # Add the function results to the messages
+                        self.conversation_messages.append({
+                            "role": "assistant",
+                            "content": None,
+                            "tool_calls": [tool_call]
+                        })
+                        self.conversation_messages.append({
+                            "role": "tool",
+                            "content": json.dumps(results),
+                            "tool_call_id": tool_call.id
+                        })
+                        
                     elif function_name == "get_ticket_description":
                         description = self.get_ticket_description(arguments["ticket_id"])
                         
@@ -176,7 +246,7 @@ class JiraChatbot:
                 # Get the final response after function calls
                 return self.process_conversation(user_input)
             
-            # Füge die Antwort zum Konversationsverlauf hinzu
+            # Add the response to the conversation history
             self.conversation_messages.append({
                 "role": "assistant",
                 "content": assistant_message.content
@@ -203,13 +273,13 @@ def display_message(role, content):
 
 def main():
     st.set_page_config(
-        page_title="JIRA Chat Assistant",
+        page_title="JIRA & Confluence Chat Assistant",
         page_icon="🤖",
         layout="wide"
     )
 
-    st.title("🤖 JIRA Chat Assistant")
-    st.write("Ask questions about your JIRA tickets or search for specific information.")
+    st.title("🤖 JIRA & Confluence Chat Assistant")
+    st.write("Ask questions about your JIRA tickets or search for Confluence pages.")
 
     # Initialize session state
     init_session_state()
@@ -219,7 +289,7 @@ def main():
         display_message(message["role"], message["content"])
 
     # Chat input
-    if prompt := st.chat_input("Ask questions about your JIRA tickets or search for specific information...."):
+    if prompt := st.chat_input("Ask questions about your JIRA tickets or search for Confluence pages...."):
         # Add user message to chat history
         st.session_state.messages.append({"role": "user", "content": prompt})
         
