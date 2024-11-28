@@ -26,7 +26,8 @@ class JiraChatbot:
                 If the user searches for information about Confluence (e.g., "Find pages about XYZ"), use search_confluence_pages.
                 If the user searches for ticket information (e.g., "Where is XYZ mentioned?"), use search_tickets_by_keyword.
                 Summarize the found information and respond in a clear and understandable manner.
-                Please, if you know the answer to a prompt WITHOUT using any additional tool, BEFORE responding search with the tools if you can find any related knowledge source to the given topic and additionally to your answer provide the result of the tool. If you can't find any additonal knowledge just leave it and don't respond with the tool result.
+                Please, always use the tools first before providing general information. When you found any information leading to an answer to the prompt, always just use the tools. You can also ask the user, if you can provide any additional information.
+                Use your general knowledge JUST and ONLY JUST if the tools do not provide any information.
                 If you are asked for information which you would clarify as some kind of organization intern information, e.g. vacation policies, internal structures, who is responsible for specific things etc., please NEVER answer with your general knowledge instead just use the tools to answer."""
             }
         ]
