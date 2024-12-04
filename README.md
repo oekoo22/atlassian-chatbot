@@ -29,7 +29,6 @@ Before running the application, ensure you have the following:
 * Environment Variables: Store your credentials securely in a .env file:
 
 ```plaintext
-Copy code
 ATLASSIAN_API=<your-atlassian-api-key>
 JIRA_USER_EMAIL=<your-jira-user-email>
 JIRA_URL=<your-jira-url>
