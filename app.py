@@ -6,11 +6,13 @@ import openai
 import json
 from datetime import datetime
 
+# Load credentials
 load_dotenv()
 
+# Create class for chatbot
 class JiraChatbot:
     def __init__(self):
-        # Configurations
+        # Bind credentials
         self.atlassian_key = os.getenv("ATLASSIAN_API")
         self.jira_user = os.getenv("JIRA_USER_EMAIL")
         self.jira_url = os.getenv("JIRA_URL")
@@ -20,6 +22,7 @@ class JiraChatbot:
         # Conversation Messages
         self.conversation_messages = [
             {
+                # This is the instruction for the chatbot. Change this for more nuanced responses.
                 "role": "system",
                 "content": """You are a helpful assistant who searches and analyzes Jira tickets and Confluence pages.
                 If the user asks for a specific ticket ID (e.g., SCRUM-3), use get_ticket_description.
@@ -32,7 +35,7 @@ class JiraChatbot:
             }
         ]
         
-        # Tools Definition
+        # Define the tools which the chatbot can later use. Tools are functions that can be called by the chatbot to perform specific tasks.
         self.tools = [
             {
                 "type": "function",
@@ -86,7 +89,10 @@ class JiraChatbot:
                 }
             }
         ]
-
+    # The get_ticket_url and get_confluence_url functions are also tools for the chatbot. But they are not defined as a tool.
+    # We assign them later when the tools are defined. With this pactice we make sure that the chatbot always uses these functions whenever the tool is used.
+    # The chatbot does not need to decide between the usage of these tools. So, we can define them as neccessary whenever the associated tool is used by the chatbot.
+    # In this example, whenever the chatbot uses the tool to access knowledge from Jira or Confluence, it will always provide a link to the source of the knowledge.
     def get_ticket_url(self, ticket_id):
         """Generate the full URL for a Jira ticket."""
         return f"{self.jira_url}/browse/{ticket_id}"
@@ -95,16 +101,18 @@ class JiraChatbot:
         """Generate the full URL for a Confluence page."""
         return f"{self.jira_url}/wiki/pages/viewpage.action?pageId={page_id}"
 
+    # When a user wants the description of a specific ticket, the chatbot uses the get_ticket_description tool.
     def get_ticket_description(self, ticket_id):
         headers = {
             "Accept": "application/json"
         }
 
         auth = (self.jira_user, self.atlassian_key)
-        url = f"{self.jira_url}/rest/api/3/issue/{ticket_id}"
+        url = f"{self.jira_url}/rest/api/3/issue/{ticket_id}" # Use the Ticket ID extracted from the user prompt
         
         response = requests.get(url, headers=headers, auth=auth)
         
+        # Make sure the response is successful
         if response.status_code == 200:
             ticket_data = response.json()
             description = ticket_data['fields'].get('description', None)
@@ -122,6 +130,7 @@ class JiraChatbot:
         else:
             return f"Error: {response.status_code} {response.text}"
 
+    # Use the search API endpoint to search for a ticket from the keyword a user prompts.
     def search_tickets_by_keyword(self, keyword):
         headers = {
             "Accept": "application/json"
@@ -133,6 +142,7 @@ class JiraChatbot:
         
         response = requests.get(url, headers=headers, auth=auth)
 
+        # Make sure the response is successful
         if response.status_code == 200:
             search_results = response.json()
             issues = search_results.get('issues', [])
@@ -144,13 +154,14 @@ class JiraChatbot:
                         "description": self.get_ticket_description(issue['key']),
                         "url": self.get_ticket_url(issue['key'])
                     }
-                    for issue in issues[:5]  # Limit to top 5 results for better handling
+                    for issue in issues[:5]  # Limit to top 5 results for better handling. Raise if needed.
                 ]
             else:
                 return []
         else:
             raise Exception(f"Error: {response.status_code} {response.text}")
 
+    # Search for Confluence pages containing specific keywords from the user prompt.
     def search_confluence_pages(self, keyword):
         headers = {
             "Accept": "application/json"
@@ -161,11 +172,12 @@ class JiraChatbot:
         url = f"{self.jira_url}/wiki/rest/api/search"
         params = {
             "cql": f"type=page and text ~ \"{keyword}\"",
-            "limit": 5  # Limit to top 5 results
+            "limit": 5  # Limit to top 5 results. Raise if needed.
         }
         
         response = requests.get(url, headers=headers, auth=auth, params=params)
 
+        # Make sure the response is successful
         if response.status_code == 200:
             search_results = response.json()
             results = search_results.get('results', [])
@@ -184,24 +196,29 @@ class JiraChatbot:
         else:
             raise Exception(f"Error: {response.status_code} {response.text}")
 
+    # Where the magic happens. The chatbot gets the user input and processes the conversation.
     def process_conversation(self, user_input):
         # Add User Input to the conversation
         self.conversation_messages.append({"role": "user", "content": user_input})
         
         try:
+            # Call the OpenAI API to get the chatbot response
             response = openai.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o", # Change the model as needed. 
                 messages=self.conversation_messages,
-                tools=self.tools
+                tools=self.tools # Give the chatbot access to all defined tools
             )
-            
+            # Get the chatbot response
             assistant_message = response.choices[0].message
             
+            # Check if the chatbot response is a tool call
             if response.choices[0].finish_reason == "tool_calls":
+                # We have to extract the tool calls from the assistant message to actually get the answer for the user
                 for tool_call in assistant_message.tool_calls:
                     function_name = tool_call.function.name
                     arguments = json.loads(tool_call.function.arguments)
                     
+                    # Get results from each tool call and fill the chatbot message with the actual answer
                     if function_name == "search_tickets_by_keyword":
                         results = self.search_tickets_by_keyword(arguments["keyword"])
                         
@@ -255,6 +272,7 @@ class JiraChatbot:
                 "content": assistant_message.content
             })
             
+            # Return the chatbot response
             return assistant_message.content
             
         except Exception as e:
