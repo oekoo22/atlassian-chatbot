@@ -58,7 +58,6 @@ pip install -r requirements.txt
 1. Start the Streamlit app:
 
 ```bash
-Copy code
 streamlit run app.py
 ```
 
